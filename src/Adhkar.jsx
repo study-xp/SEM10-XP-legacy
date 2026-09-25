@@ -132,7 +132,7 @@ export function AdhkarApp() {
   );
 }
 
-export function AdhkarBalloonPopup({ intervalMinutes = 60 }) {
+export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = false }) {
   const [visible, setVisible] = useState(false);
   const [content, setContent] = useState(null);
   const rotateIndex = useRef(0);
@@ -152,9 +152,10 @@ export function AdhkarBalloonPopup({ intervalMinutes = 60 }) {
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
       dismissTimer.current = setTimeout(() => setVisible(false), 30000);
     };
-    const iv = setInterval(fire, Math.max(1, intervalMinutes) * 60 * 1000);
+    if (fireImmediately) fire();
+    const iv = setInterval(fire, Math.max(0.1, intervalMinutes) * 60 * 1000);
     return () => { clearInterval(iv); if (dismissTimer.current) clearTimeout(dismissTimer.current); };
-  }, [intervalMinutes]);
+  }, [intervalMinutes, fireImmediately]);
 
   if (!visible || !content) return null;
   return (
