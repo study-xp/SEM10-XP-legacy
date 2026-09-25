@@ -120,6 +120,7 @@ export function AdhkarApp() {
         <label>التكرار:
           <select value={popupMinutes} onChange={e => { const v = Number(e.target.value); setPopupMinutes(v); savePopupSetting("adhkar-popup-minutes", v); }}>
             <option value="0">إيقاف</option>
+            <option value="1">كل دقيقة</option>
             <option value="5">كل 5 دقائق</option>
             <option value="15">كل 15 دقيقة</option>
             <option value="30">كل 30 دقيقة</option>
