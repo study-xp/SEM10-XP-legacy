@@ -98,6 +98,12 @@ function AdhkarCard({ item }) {
 
 export function AdhkarApp() {
   const [tab, setTab] = useState("morning");
+  const [popupMinutes, setPopupMinutes] = useState(() => Number(localStorage.getItem("adhkar-popup-minutes") || 60));
+  const [popupType, setPopupType] = useState(() => localStorage.getItem("adhkar-popup-type") || "salawat");
+  const savePopupSetting = (key, value) => {
+    localStorage.setItem(key, String(value));
+    window.dispatchEvent(new CustomEvent("adhkar-popup-settings"));
+  };
   const hadith = HADITH_LIST[dayIndex(HADITH_LIST.length)];
   const ayah = AYAH_LIST[dayIndex(AYAH_LIST.length)];
   return (
@@ -108,6 +114,26 @@ export function AdhkarApp() {
         <button className={"adhkar-tab" + (tab === "evening" ? " adhkar-tab-active" : "")} onClick={() => setTab("evening")}>أذكار المساء</button>
         <button className={"adhkar-tab" + (tab === "hadith" ? " adhkar-tab-active" : "")} onClick={() => setTab("hadith")}>حديث اليوم</button>
         <button className={"adhkar-tab" + (tab === "ayah" ? " adhkar-tab-active" : "")} onClick={() => setTab("ayah")}>آية اليوم</button>
+      </div>
+      <div className="adhkar-settings" dir="rtl">
+        <div className="adhkar-settings-title">تذكير الأذكار</div>
+        <label>التكرار:
+          <select value={popupMinutes} onChange={e => { const v = Number(e.target.value); setPopupMinutes(v); savePopupSetting("adhkar-popup-minutes", v); }}>
+            <option value="0">إيقاف</option>
+            <option value="5">كل 5 دقائق</option>
+            <option value="15">كل 15 دقيقة</option>
+            <option value="30">كل 30 دقيقة</option>
+            <option value="60">كل ساعة</option>
+            <option value="120">كل ساعتين</option>
+            <option value="240">كل 4 ساعات</option>
+          </select>
+        </label>
+        <label>محتوى التذكير:
+          <select value={popupType} onChange={e => { setPopupType(e.target.value); savePopupSetting("adhkar-popup-type", e.target.value); }}>
+            <option value="salawat">اللهم صل وسلم وبارك على نبينا محمد ﷺ</option>
+            <option value="rotation">حديث وآية وصلاة على النبي</option>
+          </select>
+        </label>
       </div>
       <div className="adhkar-body">
         {tab === "morning" && <div className="adhkar-list">{MORNING_ADHKAR.map((it) => <AdhkarCard key={it.id} item={it} />)}</div>}
@@ -135,8 +161,21 @@ export function AdhkarApp() {
 export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = false }) {
   const [visible, setVisible] = useState(false);
   const [content, setContent] = useState(null);
+  const [settings, setSettings] = useState(() => ({
+    minutes: Number(localStorage.getItem("adhkar-popup-minutes") || intervalMinutes),
+    type: localStorage.getItem("adhkar-popup-type") || "salawat"
+  }));
   const rotateIndex = useRef(0);
   const dismissTimer = useRef(null);
+
+  useEffect(() => {
+    const sync = () => setSettings({
+      minutes: Number(localStorage.getItem("adhkar-popup-minutes") || intervalMinutes),
+      type: localStorage.getItem("adhkar-popup-type") || "salawat"
+    });
+    window.addEventListener("adhkar-popup-settings", sync);
+    return () => window.removeEventListener("adhkar-popup-settings", sync);
+  }, [intervalMinutes]);
 
   useEffect(() => {
     const pool = [
@@ -145,17 +184,20 @@ export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = fal
       ...AYAH_LIST.map((a) => ({ kind: "آية", text: a.text, source: a.source })),
     ];
     const fire = () => {
-      const item = pool[rotateIndex.current % pool.length];
-      rotateIndex.current += 1;
+      if (!settings.minutes) return;
+      const item = settings.type === "salawat"
+        ? { kind: "صلاة على النبي ﷺ", text: SALAWAT }
+        : pool[rotateIndex.current++ % pool.length];
       setContent(item);
       setVisible(true);
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
       dismissTimer.current = setTimeout(() => setVisible(false), 30000);
     };
     if (fireImmediately) fire();
-    const iv = setInterval(fire, Math.max(0.1, intervalMinutes) * 60 * 1000);
+    if (!settings.minutes) return;
+    const iv = setInterval(fire, settings.minutes * 60 * 1000);
     return () => { clearInterval(iv); if (dismissTimer.current) clearTimeout(dismissTimer.current); };
-  }, [intervalMinutes, fireImmediately]);
+  }, [settings, fireImmediately]);
 
   if (!visible || !content) return null;
   return (
@@ -177,6 +219,10 @@ const ADHKAR_CSS = `
   .adhkar-tabs { display:flex; gap:4px; padding: 8px 8px 0; flex-wrap:wrap; }
   .adhkar-tab { flex:1; min-width:90px; font-family:Tahoma,sans-serif; font-size:11.5px; padding:6px 8px; border:1px solid #8E8E71; border-radius:3px 3px 0 0; background:#ECE9D8; cursor:pointer; }
   .adhkar-tab-active { background:#fff; border-bottom-color:#fff; font-weight:bold; color:#0A46C6; }
+  .adhkar-settings { background:#ECE9D8; border:1px solid #ACA899; margin:8px 8px 0; padding:7px 8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:11px; }
+  .adhkar-settings-title { font-weight:bold; color:#0A46C6; width:100%; }
+  .adhkar-settings label { display:flex; align-items:center; gap:4px; }
+  .adhkar-settings select { font-family:Tahoma,sans-serif; font-size:10.5px; border:1px solid #8E8E71; background:#fff; padding:2px 4px; max-width:210px; }
   .adhkar-body { flex:1; overflow:auto; background:#fff; border:1px solid #ACA899; margin:0 8px; padding:10px; }
   .adhkar-list { display:flex; flex-direction:column; gap:10px; }
   .adhkar-card { background:#F8F7F0; border:1px solid #D8D5C4; border-radius:4px; padding:10px 12px; }
