@@ -3,9 +3,9 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 // GitHub Pages project-site base path. If you deploy this repo as
-// https://<username>.github.io/SEM10-XP/  keep this as "/SEM10-XP/".
+// https://<username>.github.io/SEM10-XP-legacy/  keep this as "/SEM10-XP/".
 // If you deploy to a custom domain or the root of github.io, change to "/".
-const BASE_PATH = process.env.SEM10_BASE || "/SEM10-XP/";
+const BASE_PATH = process.env.SEM10_BASE || "/SEM10-XP-legacy/";
 
 export default defineConfig({
   base: BASE_PATH,
