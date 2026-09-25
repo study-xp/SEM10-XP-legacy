@@ -82,9 +82,7 @@ function getSalawatAudio() {
 
 async function playSalawatAudio() {
   const audio = getSalawatAudio();
-  audio.pause();
   audio.currentTime = 0;
-  audio.load();
   await audio.play();
 }
 
@@ -125,6 +123,7 @@ export function AdhkarApp() {
   const [notificationEnabled, setNotificationEnabled] = useState(() => localStorage.getItem("adhkar-notifications") === "1");
   const [audioEnabled, setAudioEnabled] = useState(() => localStorage.getItem("adhkar-audio") === "1");
   const [audioStatus, setAudioStatus] = useState("");
+
   const enableNotifications = async () => {
     if (!("Notification" in window)) return;
     const permission = await Notification.requestPermission();
@@ -262,9 +261,7 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
       setContent(item);
       setVisible(true);
       if (settings.audio && item.kind === "صلاة على النبي ﷺ") {
-        try {
-          playSalawatAudio().catch(() => {});
-        } catch (e) {}
+        playSalawatAudio().catch(() => {});
       }
       if (settings.notifications && "Notification" in window && Notification.permission === "granted") {
         new Notification(item.kind, {
