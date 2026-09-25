@@ -98,10 +98,11 @@ function AdhkarCard({ item }) {
 
 export function AdhkarApp() {
   const [tab, setTab] = useState("morning");
-  const [popupMinutes, setPopupMinutes] = useState(() => Number(localStorage.getItem("adhkar-popup-minutes") || 60));
+  const [popupMinutes, setPopupMinutes] = useState(() => Number(localStorage.getItem("adhkar-popup-minutes") || 10));
   const [popupType, setPopupType] = useState(() => localStorage.getItem("adhkar-popup-type") || "salawat");
   const [popupPinned, setPopupPinned] = useState(() => localStorage.getItem("adhkar-popup-pinned") === "1");
   const [notificationEnabled, setNotificationEnabled] = useState(() => localStorage.getItem("adhkar-notifications") === "1");
+  const [audioEnabled, setAudioEnabled] = useState(() => localStorage.getItem("adhkar-audio") === "1");
   const enableNotifications = async () => {
     if (!("Notification" in window)) return;
     const permission = await Notification.requestPermission();
@@ -130,7 +131,6 @@ export function AdhkarApp() {
         <label>التكرار:
           <select value={popupMinutes} onChange={e => { const v = Number(e.target.value); setPopupMinutes(v); savePopupSetting("adhkar-popup-minutes", v); }}>
             <option value="0">إيقاف</option>
-        <option value="1">كل دقيقة</option>
             <option value="1">كل دقيقة</option>
             <option value="5">كل 5 دقائق</option>
             <option value="15">كل 15 دقيقة</option>
@@ -143,6 +143,10 @@ export function AdhkarApp() {
         <label className="adhkar-pin-setting">
           <input type="checkbox" checked={notificationEnabled} onChange={enableNotifications} />
           إشعارات شريط المهام
+        </label>
+        <label className="adhkar-pin-setting">
+          <input type="checkbox" checked={audioEnabled} onChange={e => { const v = e.target.checked; setAudioEnabled(v); savePopupSetting("adhkar-audio", v ? "1" : "0"); }} />
+          صوت الصلاة على النبي
         </label>
         <label className="adhkar-pin-setting">
           <input type="checkbox" checked={popupPinned} onChange={e => { const v = e.target.checked; setPopupPinned(v); savePopupSetting("adhkar-popup-pinned", v ? "1" : "0"); }} />
@@ -178,14 +182,15 @@ export function AdhkarApp() {
   );
 }
 
-export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = false }) {
+export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = false }) {
   const [visible, setVisible] = useState(false);
   const [content, setContent] = useState(null);
   const [settings, setSettings] = useState(() => ({
     minutes: Number(localStorage.getItem("adhkar-popup-minutes") || intervalMinutes),
     type: localStorage.getItem("adhkar-popup-type") || "salawat",
     pinned: localStorage.getItem("adhkar-popup-pinned") === "1",
-    notifications: localStorage.getItem("adhkar-notifications") === "1"
+    notifications: localStorage.getItem("adhkar-notifications") === "1",
+    audio: localStorage.getItem("adhkar-audio") === "1"
   }));
   const rotateIndex = useRef(0);
   const dismissTimer = useRef(null);
@@ -195,7 +200,8 @@ export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = fal
       minutes: Number(localStorage.getItem("adhkar-popup-minutes") || intervalMinutes),
       type: localStorage.getItem("adhkar-popup-type") || "salawat",
       pinned: localStorage.getItem("adhkar-popup-pinned") === "1",
-      notifications: localStorage.getItem("adhkar-notifications") === "1"
+      notifications: localStorage.getItem("adhkar-notifications") === "1",
+      audio: localStorage.getItem("adhkar-audio") === "1"
     });
     window.addEventListener("adhkar-popup-settings", sync);
     return () => window.removeEventListener("adhkar-popup-settings", sync);
@@ -214,6 +220,13 @@ export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = fal
         : pool[rotateIndex.current++ % pool.length];
       setContent(item);
       setVisible(true);
+      if (settings.audio && item.kind === "صلاة على النبي ﷺ") {
+        try {
+          const audio = new Audio("https://salawat.com/wp-content/uploads/2026/08/salat-al-nabi-al-ummi-1-audio-1.mp3");
+          audio.volume = 0.8;
+          audio.play().catch(() => {});
+        } catch (e) {}
+      }
       if (settings.notifications && "Notification" in window && Notification.permission === "granted") {
         new Notification(item.kind, {
           body: item.text,
