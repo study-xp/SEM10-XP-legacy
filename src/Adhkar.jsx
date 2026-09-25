@@ -67,6 +67,7 @@ const AYAH_LIST = [
 ];
 
 const SALAWAT = "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ وَعَلَىٰ آلِهِ وَصَحْبِهِ أَجْمَعِينَ";
+const SALAWAT_AUDIO_URL = "https://salawat.com/wp-content/uploads/2026/08/salat-al-nabi-al-ummi-2-audio-1.mp3";
 
 function dayIndex(len) {
   const start = new Date(new Date().getFullYear(), 0, 0);
@@ -145,9 +146,31 @@ export function AdhkarApp() {
           إشعارات شريط المهام
         </label>
         <label className="adhkar-pin-setting">
-          <input type="checkbox" checked={audioEnabled} onChange={e => { const v = e.target.checked; setAudioEnabled(v); savePopupSetting("adhkar-audio", v ? "1" : "0"); }} />
+          <input type="checkbox" checked={audioEnabled} onChange={e => {
+            const v = e.target.checked;
+            setAudioEnabled(v);
+            savePopupSetting("adhkar-audio", v ? "1" : "0");
+            if (v) {
+              try {
+                const a = new Audio(SALAWAT_AUDIO_URL);
+                a.preload = "auto";
+                a.volume = 0.8;
+                window.__adhkarSalawatAudio = a;
+                a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+              } catch (err) {}
+            }
+          }} />
           صوت الصلاة على النبي
         </label>
+        <button className="adhkar-audio-test" type="button" disabled={!audioEnabled} onClick={() => {
+          try {
+            const a = window.__adhkarSalawatAudio || new Audio(SALAWAT_AUDIO_URL);
+            a.currentTime = 0;
+            a.volume = 0.8;
+            window.__adhkarSalawatAudio = a;
+            a.play().catch(() => {});
+          } catch (err) {}
+        }}>اختبار الصوت</button>
         <label className="adhkar-pin-setting">
           <input type="checkbox" checked={popupPinned} onChange={e => { const v = e.target.checked; setPopupPinned(v); savePopupSetting("adhkar-popup-pinned", v ? "1" : "0"); }} />
           تثبيت النافذة
@@ -222,8 +245,11 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
       setVisible(true);
       if (settings.audio && item.kind === "صلاة على النبي ﷺ") {
         try {
-          const audio = new Audio("https://salawat.com/wp-content/uploads/2026/08/salat-al-nabi-al-ummi-1-audio-1.mp3");
+          const audio = window.__adhkarSalawatAudio || new Audio(SALAWAT_AUDIO_URL);
+          audio.preload = "auto";
           audio.volume = 0.8;
+          audio.currentTime = 0;
+          window.__adhkarSalawatAudio = audio;
           audio.play().catch(() => {});
         } catch (e) {}
       }
@@ -270,6 +296,8 @@ const ADHKAR_CSS = `
   .adhkar-settings label { display:flex; align-items:center; gap:4px; }
   .adhkar-pin-setting { cursor:pointer; }
   .adhkar-pin-setting input { margin:0; accent-color:#0A46C6; }
+  .adhkar-audio-test { font-family:Tahoma,sans-serif; font-size:10.5px; border:1px solid #8E8E71; background:#fff; padding:2px 6px; cursor:pointer; }
+  .adhkar-audio-test:disabled { opacity:0.5; cursor:default; }
   .adhkar-settings select { font-family:Tahoma,sans-serif; font-size:10.5px; border:1px solid #8E8E71; background:#fff; padding:2px 4px; max-width:210px; }
   .adhkar-body { flex:1; overflow:auto; background:#fff; border:1px solid #ACA899; margin:0 8px; padding:10px; }
   .adhkar-list { display:flex; flex-direction:column; gap:10px; }
