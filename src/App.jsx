@@ -1199,7 +1199,7 @@ export default function App() {
       </SemXPErrorBoundary>
       {(() => {
         const test = new URLSearchParams(window.location.search).has("adhkar-test");
-        return <AdhkarBalloonPopup intervalMinutes={test ? 0.1 : 60} fireImmediately={test} />;
+        return <AdhkarBalloonPopup intervalMinutes={test ? 0.1 : 10} fireImmediately={test} />;
       })()}
     </>
   );
