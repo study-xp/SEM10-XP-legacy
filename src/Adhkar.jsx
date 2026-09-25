@@ -99,6 +99,7 @@ function AdhkarCard({ item }) {
 
 export function AdhkarApp() {
   const [tab, setTab] = useState("morning");
+  const salawatAudioRef = useRef(null);
   const [popupMinutes, setPopupMinutes] = useState(() => Number(localStorage.getItem("adhkar-popup-minutes") || 10));
   const [popupType, setPopupType] = useState(() => localStorage.getItem("adhkar-popup-type") || "salawat");
   const [popupPinned, setPopupPinned] = useState(() => localStorage.getItem("adhkar-popup-pinned") === "1");
@@ -120,6 +121,7 @@ export function AdhkarApp() {
   const ayah = AYAH_LIST[dayIndex(AYAH_LIST.length)];
   return (
     <div className="adhkar-app" dir="rtl">
+      <audio ref={salawatAudioRef} preload="auto" src={SALAWAT_AUDIO_URL} />
       <style>{ADHKAR_CSS}</style>
       <div className="adhkar-tabs">
         <button className={"adhkar-tab" + (tab === "morning" ? " adhkar-tab-active" : "")} onClick={() => setTab("morning")}>أذكار الصباح</button>
@@ -151,25 +153,23 @@ export function AdhkarApp() {
             setAudioEnabled(v);
             savePopupSetting("adhkar-audio", v ? "1" : "0");
             if (v) {
-              try {
-                const a = new Audio(SALAWAT_AUDIO_URL);
-                a.preload = "auto";
+              const a = salawatAudioRef.current;
+              if (a) {
                 a.volume = 0.8;
-                window.__adhkarSalawatAudio = a;
-                a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
-              } catch (err) {}
+                a.currentTime = 0;
+                a.play().catch(() => {});
+              }
             }
           }} />
           صوت الصلاة على النبي
         </label>
         <button className="adhkar-audio-test" type="button" disabled={!audioEnabled} onClick={() => {
-          try {
-            const a = window.__adhkarSalawatAudio || new Audio(SALAWAT_AUDIO_URL);
-            a.currentTime = 0;
+          const a = salawatAudioRef.current;
+          if (a) {
             a.volume = 0.8;
-            window.__adhkarSalawatAudio = a;
+            a.currentTime = 0;
             a.play().catch(() => {});
-          } catch (err) {}
+          }
         }}>اختبار الصوت</button>
         <label className="adhkar-pin-setting">
           <input type="checkbox" checked={popupPinned} onChange={e => { const v = e.target.checked; setPopupPinned(v); savePopupSetting("adhkar-popup-pinned", v ? "1" : "0"); }} />
@@ -245,7 +245,7 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
       setVisible(true);
       if (settings.audio && item.kind === "صلاة على النبي ﷺ") {
         try {
-          const audio = window.__adhkarSalawatAudio || new Audio(SALAWAT_AUDIO_URL);
+          const audio = document.querySelector(".adhkar-app audio") || window.__adhkarSalawatAudio || new Audio(SALAWAT_AUDIO_URL);
           audio.preload = "auto";
           audio.volume = 0.8;
           audio.currentTime = 0;
