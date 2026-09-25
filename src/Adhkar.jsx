@@ -100,6 +100,7 @@ export function AdhkarApp() {
   const [tab, setTab] = useState("morning");
   const [popupMinutes, setPopupMinutes] = useState(() => Number(localStorage.getItem("adhkar-popup-minutes") || 60));
   const [popupType, setPopupType] = useState(() => localStorage.getItem("adhkar-popup-type") || "salawat");
+  const [popupPinned, setPopupPinned] = useState(() => localStorage.getItem("adhkar-popup-pinned") === "1");
   const savePopupSetting = (key, value) => {
     localStorage.setItem(key, String(value));
     window.dispatchEvent(new CustomEvent("adhkar-popup-settings"));
@@ -128,6 +129,10 @@ export function AdhkarApp() {
             <option value="120">كل ساعتين</option>
             <option value="240">كل 4 ساعات</option>
           </select>
+        </label>
+        <label className="adhkar-pin-setting">
+          <input type="checkbox" checked={popupPinned} onChange={e => { const v = e.target.checked; setPopupPinned(v); savePopupSetting("adhkar-popup-pinned", v ? "1" : "0"); }} />
+          تثبيت النافذة
         </label>
         <label>محتوى التذكير:
           <select value={popupType} onChange={e => { setPopupType(e.target.value); savePopupSetting("adhkar-popup-type", e.target.value); }}>
@@ -164,7 +169,8 @@ export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = fal
   const [content, setContent] = useState(null);
   const [settings, setSettings] = useState(() => ({
     minutes: Number(localStorage.getItem("adhkar-popup-minutes") || intervalMinutes),
-    type: localStorage.getItem("adhkar-popup-type") || "salawat"
+    type: localStorage.getItem("adhkar-popup-type") || "salawat",
+    pinned: localStorage.getItem("adhkar-popup-pinned") === "1"
   }));
   const rotateIndex = useRef(0);
   const dismissTimer = useRef(null);
@@ -172,7 +178,8 @@ export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = fal
   useEffect(() => {
     const sync = () => setSettings({
       minutes: Number(localStorage.getItem("adhkar-popup-minutes") || intervalMinutes),
-      type: localStorage.getItem("adhkar-popup-type") || "salawat"
+      type: localStorage.getItem("adhkar-popup-type") || "salawat",
+      pinned: localStorage.getItem("adhkar-popup-pinned") === "1"
     });
     window.addEventListener("adhkar-popup-settings", sync);
     return () => window.removeEventListener("adhkar-popup-settings", sync);
@@ -192,7 +199,7 @@ export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = fal
       setContent(item);
       setVisible(true);
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
-      dismissTimer.current = setTimeout(() => setVisible(false), 30000);
+      if (!settings.pinned) dismissTimer.current = setTimeout(() => setVisible(false), 30000);
     };
     if (fireImmediately) fire();
     if (!settings.minutes) return;
@@ -223,6 +230,8 @@ const ADHKAR_CSS = `
   .adhkar-settings { background:#ECE9D8; border:1px solid #ACA899; margin:8px 8px 0; padding:7px 8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:11px; }
   .adhkar-settings-title { font-weight:bold; color:#0A46C6; width:100%; }
   .adhkar-settings label { display:flex; align-items:center; gap:4px; }
+  .adhkar-pin-setting { cursor:pointer; }
+  .adhkar-pin-setting input { margin:0; accent-color:#0A46C6; }
   .adhkar-settings select { font-family:Tahoma,sans-serif; font-size:10.5px; border:1px solid #8E8E71; background:#fff; padding:2px 4px; max-width:210px; }
   .adhkar-body { flex:1; overflow:auto; background:#fff; border:1px solid #ACA899; margin:0 8px; padding:10px; }
   .adhkar-list { display:flex; flex-direction:column; gap:10px; }
