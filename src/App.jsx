@@ -1097,6 +1097,10 @@ function Sem10XPApp() {
   }, [loggedIn]);
   const ready = preBoot && loggedIn && booted && progressLoaded && sessionsLoaded && settingsLoaded && tasksLoaded && plannerLoaded && examLoaded;
 
+  useEffect(() => {
+    if (ready) window.dispatchEvent(new Event("sem10xp-desktop-ready"));
+  }, [ready]);
+
   const openApp = (key) => {
     setStartMenuOpen(false);
     zTop.current += 1;
@@ -1192,15 +1196,26 @@ function Sem10XPApp() {
 }
 
 export default function App() {
+  const [desktopReady, setDesktopReady] = useState(false);
+  const test = new URLSearchParams(window.location.search).has("adhkar-test");
+
+  useEffect(() => {
+    const onDesktopReady = () => setDesktopReady(true);
+    window.addEventListener("sem10xp-desktop-ready", onDesktopReady);
+    return () => window.removeEventListener("sem10xp-desktop-ready", onDesktopReady);
+  }, []);
+
   return (
     <>
       <SemXPErrorBoundary>
         <Sem10XPApp />
       </SemXPErrorBoundary>
-      {(() => {
-        const test = new URLSearchParams(window.location.search).has("adhkar-test");
-        return <AdhkarBalloonPopup intervalMinutes={test ? 0.1 : 10} fireImmediately={test} />;
-      })()}
+      {desktopReady ? (
+        <AdhkarBalloonPopup
+          intervalMinutes={test ? 0.1 : 10}
+          fireImmediately={test}
+        />
+      ) : null}
     </>
   );
 }
