@@ -904,6 +904,7 @@ const APPS = {
   timer: { title: "FocusTimer.exe", icon: "⏱️", w: 380, h: 610 },
   goals: { title: "WeeklyGoals.exe", icon: "📊", w: 420, h: 560 },
   exams: { title: "ExamSchedule.exe", icon: "📝", w: 640, h: 580 },
+  adhkar: ADHKAR_APP_ENTRY,
 };
 function ClockWidget() {
   const [now, setNow] = useState(new Date());
@@ -1126,6 +1127,7 @@ function Sem10XPApp() {
     if (id === "timer") return <TimerApp timer={{ ...timer, secondsLeft }} timerActions={timerActions} settings={settings} setSettings={setSettings} tasks={tasks} addTask={addTask} plan={plan} />;
     if (id === "goals") return <GoalsApp sessions={sessions} settings={settings} setSettings={setSettings} />;
     if (id === "exams") return <ExamApp exams={exams} setExams={setExams} openApp={openApp} />;
+    if (id === "adhkar") return <AdhkarApp />;
     return null;
   };
 
