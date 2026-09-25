@@ -101,6 +101,15 @@ export function AdhkarApp() {
   const [popupMinutes, setPopupMinutes] = useState(() => Number(localStorage.getItem("adhkar-popup-minutes") || 60));
   const [popupType, setPopupType] = useState(() => localStorage.getItem("adhkar-popup-type") || "salawat");
   const [popupPinned, setPopupPinned] = useState(() => localStorage.getItem("adhkar-popup-pinned") === "1");
+  const [notificationEnabled, setNotificationEnabled] = useState(() => localStorage.getItem("adhkar-notifications") === "1");
+  const enableNotifications = async () => {
+    if (!("Notification" in window)) return;
+    const permission = await Notification.requestPermission();
+    const enabled = permission === "granted";
+    setNotificationEnabled(enabled);
+    localStorage.setItem("adhkar-notifications", enabled ? "1" : "0");
+    window.dispatchEvent(new CustomEvent("adhkar-popup-settings"));
+  };
   const savePopupSetting = (key, value) => {
     localStorage.setItem(key, String(value));
     window.dispatchEvent(new CustomEvent("adhkar-popup-settings"));
@@ -121,6 +130,7 @@ export function AdhkarApp() {
         <label>التكرار:
           <select value={popupMinutes} onChange={e => { const v = Number(e.target.value); setPopupMinutes(v); savePopupSetting("adhkar-popup-minutes", v); }}>
             <option value="0">إيقاف</option>
+        <option value="1">كل دقيقة</option>
             <option value="1">كل دقيقة</option>
             <option value="5">كل 5 دقائق</option>
             <option value="15">كل 15 دقيقة</option>
@@ -129,6 +139,10 @@ export function AdhkarApp() {
             <option value="120">كل ساعتين</option>
             <option value="240">كل 4 ساعات</option>
           </select>
+        </label>
+        <label className="adhkar-pin-setting">
+          <input type="checkbox" checked={notificationEnabled} onChange={enableNotifications} />
+          إشعارات شريط المهام
         </label>
         <label className="adhkar-pin-setting">
           <input type="checkbox" checked={popupPinned} onChange={e => { const v = e.target.checked; setPopupPinned(v); savePopupSetting("adhkar-popup-pinned", v ? "1" : "0"); }} />
@@ -170,7 +184,8 @@ export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = fal
   const [settings, setSettings] = useState(() => ({
     minutes: Number(localStorage.getItem("adhkar-popup-minutes") || intervalMinutes),
     type: localStorage.getItem("adhkar-popup-type") || "salawat",
-    pinned: localStorage.getItem("adhkar-popup-pinned") === "1"
+    pinned: localStorage.getItem("adhkar-popup-pinned") === "1",
+    notifications: localStorage.getItem("adhkar-notifications") === "1"
   }));
   const rotateIndex = useRef(0);
   const dismissTimer = useRef(null);
@@ -179,7 +194,8 @@ export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = fal
     const sync = () => setSettings({
       minutes: Number(localStorage.getItem("adhkar-popup-minutes") || intervalMinutes),
       type: localStorage.getItem("adhkar-popup-type") || "salawat",
-      pinned: localStorage.getItem("adhkar-popup-pinned") === "1"
+      pinned: localStorage.getItem("adhkar-popup-pinned") === "1",
+      notifications: localStorage.getItem("adhkar-notifications") === "1"
     });
     window.addEventListener("adhkar-popup-settings", sync);
     return () => window.removeEventListener("adhkar-popup-settings", sync);
@@ -198,6 +214,15 @@ export function AdhkarBalloonPopup({ intervalMinutes = 60, fireImmediately = fal
         : pool[rotateIndex.current++ % pool.length];
       setContent(item);
       setVisible(true);
+      if (settings.notifications && "Notification" in window && Notification.permission === "granted") {
+        new Notification(item.kind, {
+          body: item.text,
+          tag: "adhkar-reminder",
+          renotify: true,
+          requireInteraction: !!settings.pinned,
+          icon: "/SEM10-XP-legacy/pwa-192x192.png"
+        });
+      }
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
       if (!settings.pinned) dismissTimer.current = setTimeout(() => setVisible(false), 30000);
     };
