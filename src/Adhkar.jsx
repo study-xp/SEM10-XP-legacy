@@ -69,6 +69,25 @@ const AYAH_LIST = [
 const SALAWAT = "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ وَعَلَىٰ آلِهِ وَصَحْبِهِ أَجْمَعِينَ";
 const SALAWAT_AUDIO_URL = "https://salawat.com/wp-content/uploads/2026/08/salat-al-nabi-al-ummi-2-audio-1.mp3";
 
+function getSalawatAudio() {
+  if (!window.__adhkarSalawatAudio) {
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.src = SALAWAT_AUDIO_URL;
+    audio.volume = 0.8;
+    window.__adhkarSalawatAudio = audio;
+  }
+  return window.__adhkarSalawatAudio;
+}
+
+async function playSalawatAudio() {
+  const audio = getSalawatAudio();
+  audio.pause();
+  audio.currentTime = 0;
+  audio.load();
+  await audio.play();
+}
+
 function dayIndex(len) {
   const start = new Date(new Date().getFullYear(), 0, 0);
   const diffMs = new Date() - start;
@@ -105,6 +124,7 @@ export function AdhkarApp() {
   const [popupPinned, setPopupPinned] = useState(() => localStorage.getItem("adhkar-popup-pinned") === "1");
   const [notificationEnabled, setNotificationEnabled] = useState(() => localStorage.getItem("adhkar-notifications") === "1");
   const [audioEnabled, setAudioEnabled] = useState(() => localStorage.getItem("adhkar-audio") === "1");
+  const [audioStatus, setAudioStatus] = useState("");
   const enableNotifications = async () => {
     if (!("Notification" in window)) return;
     const permission = await Notification.requestPermission();
@@ -153,24 +173,22 @@ export function AdhkarApp() {
             setAudioEnabled(v);
             savePopupSetting("adhkar-audio", v ? "1" : "0");
             if (v) {
-              const a = salawatAudioRef.current;
-              if (a) {
-                a.volume = 0.8;
-                a.currentTime = 0;
-                a.play().catch(() => {});
-              }
+              playSalawatAudio()
+                .then(() => setAudioStatus("يعمل الصوت ✓"))
+                .catch((err) => setAudioStatus("تعذر تشغيل الصوت: " + (err?.message || "خطأ غير معروف")));
+            } else {
+              const a = getSalawatAudio();
+              a.pause();
             }
           }} />
           صوت الصلاة على النبي
         </label>
         <button className="adhkar-audio-test" type="button" disabled={!audioEnabled} onClick={() => {
-          const a = salawatAudioRef.current;
-          if (a) {
-            a.volume = 0.8;
-            a.currentTime = 0;
-            a.play().catch(() => {});
-          }
+          playSalawatAudio()
+            .then(() => setAudioStatus("يعمل الصوت ✓"))
+            .catch((err) => setAudioStatus("تعذر تشغيل الصوت: " + (err?.message || "خطأ غير معروف")));
         }}>اختبار الصوت</button>
+        {audioStatus ? <span className="adhkar-audio-status">{audioStatus}</span> : null}
         <label className="adhkar-pin-setting">
           <input type="checkbox" checked={popupPinned} onChange={e => { const v = e.target.checked; setPopupPinned(v); savePopupSetting("adhkar-popup-pinned", v ? "1" : "0"); }} />
           تثبيت النافذة
@@ -237,7 +255,7 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
       ...AYAH_LIST.map((a) => ({ kind: "آية", text: a.text, source: a.source })),
     ];
     const fire = () => {
-      if (!settings.minutes) return;
+      if (!settings.minutes && !fireImmediately) return;
       const item = settings.type === "salawat"
         ? { kind: "صلاة على النبي ﷺ", text: SALAWAT }
         : pool[rotateIndex.current++ % pool.length];
@@ -245,12 +263,7 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
       setVisible(true);
       if (settings.audio && item.kind === "صلاة على النبي ﷺ") {
         try {
-          const audio = document.querySelector(".adhkar-app audio") || window.__adhkarSalawatAudio || new Audio(SALAWAT_AUDIO_URL);
-          audio.preload = "auto";
-          audio.volume = 0.8;
-          audio.currentTime = 0;
-          window.__adhkarSalawatAudio = audio;
-          audio.play().catch(() => {});
+          playSalawatAudio().catch(() => {});
         } catch (e) {}
       }
       if (settings.notifications && "Notification" in window && Notification.permission === "granted") {
@@ -266,7 +279,7 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
       if (!settings.pinned) dismissTimer.current = setTimeout(() => setVisible(false), 30000);
     };
     if (fireImmediately) fire();
-    if (!settings.minutes) return;
+    if (!settings.minutes || fireImmediately) return;
     const iv = setInterval(fire, settings.minutes * 60 * 1000);
     return () => { clearInterval(iv); if (dismissTimer.current) clearTimeout(dismissTimer.current); };
   }, [settings, fireImmediately]);
@@ -298,6 +311,7 @@ const ADHKAR_CSS = `
   .adhkar-pin-setting input { margin:0; accent-color:#0A46C6; }
   .adhkar-audio-test { font-family:Tahoma,sans-serif; font-size:10.5px; border:1px solid #8E8E71; background:#fff; padding:2px 6px; cursor:pointer; }
   .adhkar-audio-test:disabled { opacity:0.5; cursor:default; }
+  .adhkar-audio-status { font-size:10px; color:#555; max-width:220px; }
   .adhkar-settings select { font-family:Tahoma,sans-serif; font-size:10.5px; border:1px solid #8E8E71; background:#fff; padding:2px 4px; max-width:210px; }
   .adhkar-body { flex:1; overflow:auto; background:#fff; border:1px solid #ACA899; margin:0 8px; padding:10px; }
   .adhkar-list { display:flex; flex-direction:column; gap:10px; }
