@@ -1,1 +1,1 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/SEM10-XP/sw.js', { scope: '/SEM10-XP/' })})}
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/SEM10-XP-legacy/sw.js', { scope: '/SEM10-XP-legacy/' })})}
