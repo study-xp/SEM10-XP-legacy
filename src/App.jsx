@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Play, Pause, RotateCcw, X, Minus, Square, Check, Search, Volume2, VolumeX, Star, Clock3, Bell, Plus } from "lucide-react";
+import { ADHKAR_APP_ENTRY, AdhkarApp } from "./Adhkar.jsx";
 
 /* ============================================================================
    DATA
