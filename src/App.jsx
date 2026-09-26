@@ -1400,7 +1400,7 @@ export default function App() {
   const test = new URLSearchParams(window.location.search).has("adhkar-test");
 
   const handleDesktopReady = useCallback(() => {
-    setTimeout(() => setDesktopReady(true), 4000);
+    setDesktopReady(true);
   }, []);
 
   return (
