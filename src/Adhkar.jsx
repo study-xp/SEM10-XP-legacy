@@ -6,6 +6,15 @@ import React, { useState, useEffect, useRef } from "react";
 
 export const ADHKAR_APP_ENTRY = { title: "Adhkar.exe", icon: "📿", w: 460, h: 600 };
 
+const ADHKAR_SETTINGS_VERSION = "adhkar-popup-settings-v2";
+function readPopupMinutes(defaultMinutes = 10) {
+  const saved = localStorage.getItem("adhkar-popup-minutes");
+  if (saved === null) return defaultMinutes;
+  const n = Number(saved);
+  if (!localStorage.getItem(ADHKAR_SETTINGS_VERSION) && n === 0) return defaultMinutes;
+  return Number.isFinite(n) && n >= 0 ? n : defaultMinutes;
+}
+
 const MORNING_ADHKAR = [
   { id: "m1", count: 1, arabic: "آيَةُ الْكُرْسِيِّ: اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ", virtue: "من قالها حين يصبح لم يزل في ذمة الله حتى يمسي" },
   { id: "m2", count: 3, arabic: "قُلْ هُوَ اللَّهُ أَحَدٌ ۝ اللَّهُ الصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ", virtue: "سورة الإخلاص، ثلاث مرات" },
@@ -119,7 +128,7 @@ export function AdhkarApp() {
   const [hadithIndex, setHadithIndex] = useState(() => dayIndex(HADITH_LIST.length));
   const [ayahIndex, setAyahIndex] = useState(() => dayIndex(AYAH_LIST.length));
   const salawatAudioRef = useRef(null);
-  const [popupMinutes, setPopupMinutes] = useState(() => Number(localStorage.getItem("adhkar-popup-minutes") || 10));
+  const [popupMinutes, setPopupMinutes] = useState(() => readPopupMinutes(10));
   const [popupType, setPopupType] = useState(() => localStorage.getItem("adhkar-popup-type") || "salawat");
   const [popupPinned, setPopupPinned] = useState(() => localStorage.getItem("adhkar-popup-pinned") === "1");
   const [notificationEnabled, setNotificationEnabled] = useState(() => localStorage.getItem("adhkar-notifications") === "1");
@@ -136,6 +145,7 @@ export function AdhkarApp() {
   };
   const savePopupSetting = (key, value) => {
     localStorage.setItem(key, String(value));
+    localStorage.setItem(ADHKAR_SETTINGS_VERSION, "1");
     window.dispatchEvent(new CustomEvent("adhkar-popup-settings"));
   };
   const hadith = HADITH_LIST[hadithIndex];
@@ -256,9 +266,8 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
   useEffect(() => {
     const sync = () => setSettings({
       minutes: (() => {
-        const saved = localStorage.getItem("adhkar-popup-minutes");
-        const n = saved === null ? Number(intervalMinutes || 10) : Number(saved);
-        return n > 0 ? n : 10;
+        const n = readPopupMinutes(Number(intervalMinutes || 10));
+        return n >= 0 ? n : Number(intervalMinutes || 10);
       })(),
       type: localStorage.getItem("adhkar-popup-type") || "salawat",
       pinned: localStorage.getItem("adhkar-popup-pinned") === "1",
@@ -301,8 +310,18 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
     };
     if (fireImmediately) fire();
     if (!settings.minutes || fireImmediately) return;
-    const iv = setInterval(fire, settings.minutes * 60 * 1000);
-    return () => { clearInterval(iv); if (dismissTimer.current) clearTimeout(dismissTimer.current); };
+    let iv = null;
+    const firstTimer = settings.minutes > 0
+      ? window.setTimeout(() => {
+          fire();
+          iv = window.setInterval(fire, settings.minutes * 60 * 1000);
+        }, 4000)
+      : null;
+    return () => {
+      if (firstTimer) clearTimeout(firstTimer);
+      if (iv) clearInterval(iv);
+      if (dismissTimer.current) clearTimeout(dismissTimer.current);
+    };
   }, [settings, fireImmediately]);
 
   if (!visible || !content) return null;
