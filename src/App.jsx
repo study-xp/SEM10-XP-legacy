@@ -1122,6 +1122,13 @@ function Sem10XPApp() {
     setFocusedId(id);
   };
   const startPomForEntry = (entry) => { timerActions.link("plan:" + entry.id); timerActions.setMode("pomodoro"); openApp("timer"); };
+  useEffect(() => {
+    const onOpenAdhkar = (event) => {
+      if (event?.detail?.id === "adhkar") openApp("adhkar");
+    };
+    window.addEventListener("sem10xp-open-app", onOpenAdhkar);
+    return () => window.removeEventListener("sem10xp-open-app", onOpenAdhkar);
+  }, []);
 
   const renderAppBody = (id) => {
     if (id === "computer") return <OverviewApp progress={progress} openApp={openApp} allData={{ progress, sessions, tasks, plan, exams, settings }} setAllData={{ setProgress, setSessions, setTasks, setPlan, setExams, setSettings }} />;
@@ -1200,9 +1207,16 @@ export default function App() {
   const test = new URLSearchParams(window.location.search).has("adhkar-test");
 
   useEffect(() => {
-    const onDesktopReady = () => setDesktopReady(true);
+    let timer = null;
+    const onDesktopReady = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setDesktopReady(true), 4000);
+    };
     window.addEventListener("sem10xp-desktop-ready", onDesktopReady);
-    return () => window.removeEventListener("sem10xp-desktop-ready", onDesktopReady);
+    return () => {
+      window.removeEventListener("sem10xp-desktop-ready", onDesktopReady);
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   return (
