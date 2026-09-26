@@ -67,7 +67,7 @@ const AYAH_LIST = [
 ];
 
 const SALAWAT = "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ وَعَلَىٰ آلِهِ وَصَحْبِهِ أَجْمَعِينَ";
-const SALAWAT_AUDIO_URL = "https://salawat.com/wp-content/uploads/2026/08/salat-al-nabi-al-ummi-2-audio-1.mp3";
+const SALAWAT_AUDIO_URL = "/SEM10-XP-legacy/sounds/salawat.mp3";
 
 function getSalawatAudio() {
   if (!window.__adhkarSalawatAudio) {
@@ -193,7 +193,7 @@ export function AdhkarApp() {
           }} />
           صوت الصلاة على النبي
         </label>
-        <button className="adhkar-audio-test" type="button" disabled={!audioEnabled} onClick={() => {
+        <button className="adhkar-audio-test" type="button" onClick={() => {
           playSalawatAudio()
             .then(() => setAudioStatus("يعمل الصوت ✓"))
             .catch((err) => setAudioStatus("تعذر تشغيل الصوت: " + (err?.message || "خطأ غير معروف")));
