@@ -255,7 +255,11 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
 
   useEffect(() => {
     const sync = () => setSettings({
-      minutes: Number(localStorage.getItem("adhkar-popup-minutes") || intervalMinutes),
+      minutes: (() => {
+        const saved = localStorage.getItem("adhkar-popup-minutes");
+        const n = saved === null ? Number(intervalMinutes || 10) : Number(saved);
+        return n > 0 ? n : 10;
+      })(),
       type: localStorage.getItem("adhkar-popup-type") || "salawat",
       pinned: localStorage.getItem("adhkar-popup-pinned") === "1",
       notifications: localStorage.getItem("adhkar-notifications") === "1",
