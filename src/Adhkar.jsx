@@ -67,7 +67,7 @@ const AYAH_LIST = [
 ];
 
 const SALAWAT = "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ وَعَلَىٰ آلِهِ وَصَحْبِهِ أَجْمَعِينَ";
-const SALAWAT_AUDIO_URL = "/SEM10-XP-legacy/sounds/salawat.mp3";
+const SALAWAT_AUDIO_URL = "https://salawat.com/wp-content/uploads/2026/08/salat-al-nabi-al-ummi-2-audio-1.mp3";
 
 function getSalawatAudio() {
   if (!window.__adhkarSalawatAudio) {
