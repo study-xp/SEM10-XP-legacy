@@ -238,8 +238,13 @@ export function AdhkarApp() {
 export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = false }) {
   const [visible, setVisible] = useState(false);
   const [content, setContent] = useState(null);
+  const [audioError, setAudioError] = useState("");
   const [settings, setSettings] = useState(() => ({
-    minutes: Number(localStorage.getItem("adhkar-popup-minutes") || intervalMinutes),
+    minutes: (() => {
+      const saved = localStorage.getItem("adhkar-popup-minutes");
+      const n = saved === null ? Number(intervalMinutes || 10) : Number(saved);
+      return n > 0 ? n : 10;
+    })(),
     type: localStorage.getItem("adhkar-popup-type") || "salawat",
     pinned: localStorage.getItem("adhkar-popup-pinned") === "1",
     notifications: localStorage.getItem("adhkar-notifications") === "1",
@@ -274,7 +279,9 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
       setContent(item);
       setVisible(true);
       if (settings.audio && item.kind === "صلاة على النبي ﷺ") {
-        playSalawatAudio().catch(() => {});
+        window.setTimeout(() => {
+          playSalawatAudio().catch((err) => setAudioError(err?.message || "تعذر تشغيل الصوت"));
+        }, 350);
       }
       if (settings.notifications && "Notification" in window && Notification.permission === "granted") {
         new Notification(item.kind, {
