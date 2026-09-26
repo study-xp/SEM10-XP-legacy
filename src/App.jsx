@@ -982,7 +982,7 @@ class SemXPErrorBoundary extends React.Component {
   }
 }
 
-function Sem10XPApp() {
+function Sem10XPApp({ onDesktopReady }) {
   const [progress, setProgress, progressLoaded] = useStoredState("lecture-progress-v2", {});
   const [sessions, setSessions, sessionsLoaded] = useStoredState("pomodoro-sessions", []);
   const [tasks, setTasks, tasksLoaded] = useStoredState("custom-tasks", []);
@@ -1098,8 +1098,8 @@ function Sem10XPApp() {
   const ready = preBoot && loggedIn && booted && progressLoaded && sessionsLoaded && settingsLoaded && tasksLoaded && plannerLoaded && examLoaded;
 
   useEffect(() => {
-    if (ready) window.dispatchEvent(new Event("sem10xp-desktop-ready"));
-  }, [ready]);
+    if (ready) onDesktopReady?.();
+  }, [ready, onDesktopReady]);
 
   const openApp = (key) => {
     setStartMenuOpen(false);
@@ -1206,23 +1206,14 @@ export default function App() {
   const [desktopReady, setDesktopReady] = useState(false);
   const test = new URLSearchParams(window.location.search).has("adhkar-test");
 
-  useEffect(() => {
-    let timer = null;
-    const onDesktopReady = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => setDesktopReady(true), 4000);
-    };
-    window.addEventListener("sem10xp-desktop-ready", onDesktopReady);
-    return () => {
-      window.removeEventListener("sem10xp-desktop-ready", onDesktopReady);
-      if (timer) clearTimeout(timer);
-    };
+  const handleDesktopReady = useCallback(() => {
+    setTimeout(() => setDesktopReady(true), 4000);
   }, []);
 
   return (
     <>
       <SemXPErrorBoundary>
-        <Sem10XPApp />
+        <Sem10XPApp onDesktopReady={handleDesktopReady} />
       </SemXPErrorBoundary>
       {desktopReady ? (
         <AdhkarBalloonPopup
