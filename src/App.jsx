@@ -533,16 +533,34 @@ function TimerApp({ timer, timerActions, settings, setSettings, tasks, addTask, 
 /* ============================================================================
    GOALS APP
    ============================================================================ */
-function GoalsApp({ sessions, settings, setSettings }) {
+function GoalsApp({ sessions, settings, setSettings, plan }) {
   const weekStart = startOfWeek(new Date(), settings.weekStartDay);
   const dayStart = startOfDay(new Date());
-  const weekSessions = sessions.filter((s) => new Date(s.ts) >= weekStart);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekSessions = sessions.filter((s) => { const t = new Date(s.ts); return t >= weekStart && t < weekEnd; });
   const daySessions = sessions.filter((s) => new Date(s.ts) >= dayStart);
   const weekCount = weekSessions.length, dayCount = daySessions.length;
   const weekMinutes = weekSessions.reduce((a, s) => a + s.durationMin, 0);
+  const dailyTarget = settings.weeklyGoal > 0 ? Math.ceil(settings.weeklyGoal / 7) : 0;
   const weekPct = settings.weeklyGoal > 0 ? Math.min(100, Math.round((weekCount / settings.weeklyGoal) * 100)) : 0;
-  const dailyTarget = settings.weeklyGoal > 0 ? Math.round(settings.weeklyGoal / 7) : 0;
   const dayPct = dailyTarget > 0 ? Math.min(100, Math.round((dayCount / dailyTarget) * 100)) : 0;
+  const goals = Array.isArray(settings.weeklyGoals) ? settings.weeklyGoals : [];
+  const scopeMatch = (goal, session) => !goal.scope || goal.scope === "all" || String(session.groupLabel || "").toLowerCase().includes(String(goal.scope).toLowerCase());
+  const goalProgress = (goal) => {
+    if (goal.type === "planned") return (plan || []).filter((p) => {
+      const d = new Date(p.dateKey + "T00:00:00");
+      return d >= weekStart && d < weekEnd && p.done && (!goal.scope || goal.scope === "all" || String(p.discipline || "").toLowerCase() === String(goal.scope).toLowerCase());
+    }).length;
+    return weekSessions.filter((s) => scopeMatch(goal, s)).length;
+  };
+  const addGoal = () => {
+    const title = window.prompt("Goal name", "Study target");
+    if (!title || !title.trim()) return;
+    const target = Math.max(1, Number(window.prompt("Target for this week", "10")) || 10);
+    const type = window.prompt("Type: poms or planned", "poms") === "planned" ? "planned" : "poms";
+    setSettings((s) => ({ ...s, weeklyGoals: [...(s.weeklyGoals || []), { id: "G" + Date.now(), title: title.trim(), target, type, scope: "all" }] }));
+  };
+  const removeGoal = (id) => setSettings((s) => ({ ...s, weeklyGoals: (s.weeklyGoals || []).filter((g) => g.id !== id) }));
   const weeks = [];
   for (let i = 7; i >= 0; i--) {
     const ws = new Date(weekStart); ws.setDate(ws.getDate() - i * 7);
@@ -552,42 +570,48 @@ function GoalsApp({ sessions, settings, setSettings }) {
   }
   const maxWeekCount = Math.max(1, ...weeks.map((w) => w.count));
   const byGroup = {};
-  sessions.forEach((s) => { const g = s.groupLabel || "Freeform"; byGroup[g] = (byGroup[g] || 0) + 1; });
+  weekSessions.forEach((s) => { const g = s.groupLabel || "Freeform"; byGroup[g] = (byGroup[g] || 0) + 1; });
   const groupRows = Object.entries(byGroup).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const daysLeft = Math.max(1, Math.ceil((weekEnd - new Date()) / 86400000));
+  const neededPerDay = settings.weeklyGoal > weekCount ? Math.ceil((settings.weeklyGoal - weekCount) / daysLeft) : 0;
   const exportCsv = () => {
-    const header = "timestamp,duration_min,label,group\n";
-    const rows = sessions.map((s) => [s.ts, s.durationMin, '"' + (s.label || "") + '"', s.groupLabel || ""].join(",")).join("\n");
+    const header = "timestamp,duration_min,label,group\\n";
+    const rows = sessions.map((s) => [s.ts, s.durationMin, '"' + (s.label || "") + '"', s.groupLabel || ""].join(",")).join("\\n");
     download("pomodoro-sessions.csv", header + rows);
   };
   return (
     <div className="app-col">
-      <XPGroupBox title="Weekly goal">
-        <div className="settings-grid" style={{ marginBottom: 8 }}>
-          <label className="xp-small-text">Target poms / week<input type="number" className="xp-number" value={settings.weeklyGoal} min={0} onChange={(e) => setSettings((s) => ({ ...s, weeklyGoal: +e.target.value || 0 }))} /></label>
-          <label className="xp-small-text">Week starts on
-            <select className="xp-select" style={{ marginTop: 2 }} value={settings.weekStartDay} onChange={(e) => setSettings((s) => ({ ...s, weekStartDay: +e.target.value }))}>
-              <option value={6}>Saturday</option><option value={0}>Sunday</option><option value={1}>Monday</option>
-            </select>
-          </label>
+      <XPGroupBox title="THIS WEEK'S MISSION">
+        <div className="row-between"><div><div style={{ fontSize: 18, fontWeight: "bold", color: "#0A46C6" }}>{weekCount} / {settings.weeklyGoal || "—"} POMs</div><div className="xp-small-text">{weekMinutes} focused minutes · {weekPct}% complete</div></div><div style={{ fontSize: 22, fontWeight: "bold" }}>{weekPct}%</div></div>
+        <XPProgress pct={weekPct} height={14} />
+        <div className="settings-grid" style={{ marginTop: 8 }}>
+          <label className="xp-small-text">Weekly POM target<input type="number" className="xp-number" value={settings.weeklyGoal} min={0} onChange={(e) => setSettings((s) => ({ ...s, weeklyGoal: +e.target.value || 0 }))} /></label>
+          <label className="xp-small-text">Week starts<select className="xp-select" style={{ marginTop: 2 }} value={settings.weekStartDay} onChange={(e) => setSettings((s) => ({ ...s, weekStartDay: +e.target.value }))}><option value={6}>Saturday</option><option value={0}>Sunday</option><option value={1}>Monday</option></select></label>
         </div>
-        <div className="row-between"><span className="xp-small-text">{weekCount} / {settings.weeklyGoal || "—"} poms this week ({weekMinutes} min)</span><span className="xp-small-text" style={{ fontWeight: "bold" }}>{weekPct}%</span></div>
-        <XPProgress pct={weekPct} />
-        <div className="xp-small-text" style={{ marginTop: 8 }}>Today: {dayCount} / {dailyTarget || "—"} poms</div>
+        <div className="row-between" style={{ marginTop: 8 }}><span className="xp-small-text">Today: {dayCount} / {dailyTarget || "—"}</span><span className="xp-small-text">{neededPerDay ? neededPerDay + " POMs/day needed" : "Weekly target reached ✓"}</span></div>
         <XPProgress pct={dayPct} height={10} />
-        <div className="xp-small-text" style={{ marginTop: 6, opacity: 0.75 }}>Resets automatically each week/day — counted live from your session log.</div>
       </XPGroupBox>
-      <XPGroupBox title="Last 8 weeks" style={{ marginTop: 10 }}>
-        <div className="week-chart">{weeks.map((w, i) => <div key={i} className="week-bar-col"><div className="week-bar" style={{ height: Math.max(3, (w.count / maxWeekCount) * 60) }} title={w.count + " poms"} /><span className="xp-small-text week-bar-label">{w.label}</span></div>)}</div>
+      <XPGroupBox title="GOALS & MISSIONS" style={{ marginTop: 10 }}>
+        {goals.length === 0 && <div className="xp-small-text" style={{ padding: 8 }}>No missions yet. Add targets and progress is calculated automatically from this week's activity.</div>}
+        {goals.map((goal) => {
+          const done = goalProgress(goal), pct = Math.min(100, Math.round((done / Math.max(1, goal.target)) * 100));
+          return <div key={goal.id} style={{ border: "1px solid #D0CDC0", background: "#F8F7F0", padding: 8, marginBottom: 7 }}>
+            <div className="row-between"><span style={{ fontWeight: "bold", fontSize: 12 }}>{goal.title}</span><button className="xp-small-text" style={{ border: 0, background: "transparent", color: "#666", cursor: "pointer" }} onClick={() => removeGoal(goal.id)}>×</button></div>
+            <div className="xp-small-text" style={{ margin: "4px 0" }}>{done} / {goal.target} · {goal.type === "planned" ? "planned sessions" : "Pomodoros"}</div>
+            <XPProgress pct={pct} height={10} />
+          </div>;
+        })}
+        <XPButton onClick={addGoal}>＋ Add weekly mission</XPButton>
       </XPGroupBox>
-      <XPGroupBox title="Poms by specialty / project" style={{ marginTop: 10 }}>
-        {groupRows.length === 0 && <div className="xp-small-text">No linked sessions yet.</div>}
-        {groupRows.map(([g, count]) => <div key={g} className="row-between" style={{ marginBottom: 4 }}><span className="xp-small-text">{g}</span><span className="xp-small-text" style={{ fontWeight: "bold" }}>{count}</span></div>)}
+      <XPGroupBox title="8-WEEK HISTORY" style={{ marginTop: 10 }}><div className="week-chart">{weeks.map((w, i) => <div key={i} className="week-bar-col"><div className="week-bar" style={{ height: Math.max(3, (w.count / maxWeekCount) * 60) }} title={w.count + " poms"} /><span className="xp-small-text week-bar-label">{w.label}</span></div>)}</div></XPGroupBox>
+      <XPGroupBox title="THIS WEEK BY AREA" style={{ marginTop: 10 }}>
+        {groupRows.length === 0 && <div className="xp-small-text">No sessions yet this week.</div>}
+        {groupRows.map(([g, count]) => <div key={g} className="row-between" style={{ marginBottom: 4 }}><span className="xp-small-text">{g}</span><span className="xp-small-text" style={{ fontWeight: "bold" }}>{count} POMs</span></div>)}
       </XPGroupBox>
       <div style={{ marginTop: 10, textAlign: "right" }}><XPButton onClick={exportCsv}>Export CSV</XPButton></div>
     </div>
   );
 }
-
 /* ============================================================================
    OVERVIEW APP ("My Computer") — the combined homepage the original site
    opens to (154 lectures / 19 departments / 2 disciplines), which the desktop
@@ -1136,7 +1160,7 @@ function Sem10XPApp({ onDesktopReady }) {
     if (id === "medicine") return <TrackerApp discipline="Medicine" progress={progress} setProgress={setProgress} />;
     if (id === "planner") return <PlannerApp plan={plan} setPlan={setPlan} progress={progress} startPomForEntry={startPomForEntry} />;
     if (id === "timer") return <TimerApp timer={{ ...timer, secondsLeft }} timerActions={timerActions} settings={settings} setSettings={setSettings} tasks={tasks} addTask={addTask} plan={plan} />;
-    if (id === "goals") return <GoalsApp sessions={sessions} settings={settings} setSettings={setSettings} />;
+    if (id === "goals") return <GoalsApp sessions={sessions} settings={settings} setSettings={setSettings} plan={plan} />;
     if (id === "exams") return <ExamApp exams={exams} setExams={setExams} openApp={openApp} />;
     if (id === "adhkar") return <AdhkarApp />;
     return null;
