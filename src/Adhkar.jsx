@@ -116,6 +116,8 @@ function AdhkarCard({ item }) {
 
 export function AdhkarApp() {
   const [tab, setTab] = useState("morning");
+  const [hadithIndex, setHadithIndex] = useState(() => dayIndex(HADITH_LIST.length));
+  const [ayahIndex, setAyahIndex] = useState(() => dayIndex(AYAH_LIST.length));
   const salawatAudioRef = useRef(null);
   const [popupMinutes, setPopupMinutes] = useState(() => Number(localStorage.getItem("adhkar-popup-minutes") || 10));
   const [popupType, setPopupType] = useState(() => localStorage.getItem("adhkar-popup-type") || "salawat");
@@ -136,8 +138,16 @@ export function AdhkarApp() {
     localStorage.setItem(key, String(value));
     window.dispatchEvent(new CustomEvent("adhkar-popup-settings"));
   };
-  const hadith = HADITH_LIST[dayIndex(HADITH_LIST.length)];
-  const ayah = AYAH_LIST[dayIndex(AYAH_LIST.length)];
+  const hadith = HADITH_LIST[hadithIndex];
+  const ayah = AYAH_LIST[ayahIndex];
+  const shuffleIndex = (length, current) => {
+    if (length < 2) return current;
+    let next = current;
+    while (next === current) next = Math.floor(Math.random() * length);
+    return next;
+  };
+  const shuffleHadith = () => setHadithIndex((current) => shuffleIndex(HADITH_LIST.length, current));
+  const shuffleAyah = () => setAyahIndex((current) => shuffleIndex(AYAH_LIST.length, current));
   return (
     <div className="adhkar-app" dir="rtl">
       <audio ref={salawatAudioRef} preload="auto" src={SALAWAT_AUDIO_URL} />
@@ -155,6 +165,7 @@ export function AdhkarApp() {
             <option value="0">إيقاف</option>
             <option value="1">كل دقيقة</option>
             <option value="5">كل 5 دقائق</option>
+            <option value="10">كل 10 دقائق</option>
             <option value="15">كل 15 دقيقة</option>
             <option value="30">كل 30 دقيقة</option>
             <option value="60">كل ساعة</option>
@@ -206,6 +217,7 @@ export function AdhkarApp() {
           <div className="adhkar-of-day">
             <div className="adhkar-of-day-label">حديث اليوم</div>
             <div className="adhkar-of-day-text">{hadith.text}</div>
+            <button className="adhkar-shuffle" type="button" onClick={shuffleHadith}>🔀 تبديل الحديث</button>
             <div className="adhkar-virtue">{hadith.source}</div>
           </div>
         )}
@@ -213,6 +225,7 @@ export function AdhkarApp() {
           <div className="adhkar-of-day">
             <div className="adhkar-of-day-label">آية اليوم</div>
             <div className="adhkar-of-day-text adhkar-ayah-text">{ayah.text}</div>
+            <button className="adhkar-shuffle" type="button" onClick={shuffleAyah}>🔀 تبديل الآية</button>
             <div className="adhkar-virtue">{ayah.source}</div>
           </div>
         )}
@@ -283,7 +296,7 @@ export function AdhkarBalloonPopup({ intervalMinutes = 10, fireImmediately = fal
 
   if (!visible || !content) return null;
   return (
-    <div className="adhkar-balloon" dir="rtl">
+    <div className="adhkar-balloon" dir="rtl" role="button" tabIndex={0} onClick={() => window.dispatchEvent(new CustomEvent("sem10xp-open-app", { detail: { id: "adhkar" } }))} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") window.dispatchEvent(new CustomEvent("sem10xp-open-app", { detail: { id: "adhkar" } })); }} title="فتح Adhkar.exe">
       <style>{ADHKAR_CSS}</style>
       <div className="adhkar-balloon-head">
         <span>{content.kind}</span>
@@ -323,12 +336,14 @@ const ADHKAR_CSS = `
   .adhkar-target-label { font-size:10.5px; color:#666; }
   .adhkar-check { margin-right:auto; color:#3a7a1a; font-weight:bold; }
   .adhkar-of-day { display:flex; flex-direction:column; align-items:center; text-align:center; padding:24px 12px; gap:10px; }
+  .adhkar-shuffle { font-family:Tahoma,sans-serif; font-size:10.5px; border:1px solid #8E8E71; background:#ECE9D8; padding:3px 9px; border-radius:3px; cursor:pointer; }
+  .adhkar-shuffle:hover { background:#DCEBFC; border-color:#3E97FF; }
   .adhkar-of-day-label { font-size:11px; color:#0A46C6; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px; }
   .adhkar-of-day-text { font-size:17px; line-height:2; color:#111; }
   .adhkar-ayah-text { color:#0A3FA0; }
   .adhkar-footnote { font-size:10px; color:#777; padding:6px 12px 10px; text-align:center; }
 
-  .adhkar-balloon { position:fixed; right:14px; bottom:48px; width:280px; background:#FFFFE1; border:1px solid #8A8A5A; box-shadow:2px 3px 8px rgba(0,0,0,0.35); border-radius:3px; z-index:2000; font-family:Tahoma,sans-serif; animation: adhkar-balloon-in 0.25s ease-out; }
+  .adhkar-balloon { position:fixed; cursor:pointer; right:14px; bottom:48px; width:280px; background:#FFFFE1; border:1px solid #8A8A5A; box-shadow:2px 3px 8px rgba(0,0,0,0.35); border-radius:3px; z-index:2000; font-family:Tahoma,sans-serif; animation: adhkar-balloon-in 0.25s ease-out; }
   @keyframes adhkar-balloon-in { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
   .adhkar-balloon-head { background: linear-gradient(180deg, #3E97FF, #0A46C6); color:#fff; font-size:11.5px; font-weight:bold; padding:5px 8px; display:flex; align-items:center; justify-content:space-between; border-radius:2px 2px 0 0; }
   .adhkar-balloon-close { background:none; border:none; color:#fff; cursor:pointer; font-size:13px; line-height:1; padding:0 2px; }
